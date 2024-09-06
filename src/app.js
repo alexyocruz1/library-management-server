@@ -22,7 +22,7 @@ mongoose.connect(mongoURI, {
 });
 
 // Allow multiple origins
-const allowedOrigins = ['http://localhost:3000', 'https://biblioteca-haye.vercel.app/'];
+const allowedOrigins = ['http://localhost:3000', 'https://biblioteca-haye.vercel.app'];
 
 const corsOptions = {
   origin: (origin, callback) => {

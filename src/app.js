@@ -21,7 +21,21 @@ mongoose.connect(mongoURI, {
   console.error('Error connecting to MongoDB Atlas', err);
 });
 
-app.use(cors());
+// Allow multiple origins
+const allowedOrigins = ['http://localhost:3000', 'https://biblioteca-haye.vercel.app/'];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  optionsSuccessStatus: 200 // For legacy browser support
+};
+
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 
 app.use('/api/books', bookRoutes);

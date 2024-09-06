@@ -22,7 +22,7 @@ mongoose.connect(mongoURI, {
 });
 
 // Allow multiple origins
-const allowedOrigins = ['http://localhost:3000', 'https://biblioteca-haye.vercel.app/'];
+const allowedOrigins = ['http://localhost:3000', 'https://biblioteca-haye.vercel.app'];
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -32,13 +32,10 @@ const corsOptions = {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true, 
-  optionsSuccessStatus: 200 
+  optionsSuccessStatus: 200 // For legacy browser support
 };
 
-app.use(cors(corsOptions)); // Apply CORS middleware
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 
 app.use('/api/books', bookRoutes);

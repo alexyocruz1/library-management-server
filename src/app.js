@@ -9,6 +9,7 @@ const port = process.env.PORT || 3000;
 
 const bookRoutes = require('./routes/bookRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const mongoURI = process.env.MONGO_URI;
 
@@ -40,6 +41,7 @@ app.use(bodyParser.json());
 
 app.use('/api/books', bookRoutes);
 app.use('/api/equipment', equipmentRoutes);
+app.use('/api/users', userRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

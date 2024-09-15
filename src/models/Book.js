@@ -12,7 +12,9 @@ const bookSchema = new mongoose.Schema({
   cost: { type: Number, required: true },
   dateAcquired: { type: Date, required: true },
   status: { type: String, default: 'available' },
-  observations: { type: String, default: '' }
+  observations: { type: String, default: '' },
+  imageUrl: { type: String, default: '' },
+  copies: { type: Number, default: 1 } // Add this line
 });
 
 module.exports = mongoose.model('Book', bookSchema);

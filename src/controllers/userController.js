@@ -26,6 +26,10 @@ exports.login = async (req, res) => {
     if (!user.verified) {
       return res.status(401).json({ success: false, message: 'Please verify your email before logging in.' });
     }
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not defined');
+    }
+
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
     res.json({ 
       success: true, 
@@ -39,6 +43,7 @@ exports.login = async (req, res) => {
       } 
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Login error:', error);
+    res.status(500).json({ success: false, message: 'An error occurred during login. Please try again.' });
   }
 };

@@ -1,4 +1,5 @@
 const Book = require('../models/Book');
+const mongoose = require('mongoose'); // Add this line at the top of the file
 
 const generateUniqueCode = async () => {
   // Implement a function to generate a unique code
@@ -28,11 +29,13 @@ exports.getBookById = async (req, res) => {
 exports.createBook = async (req, res) => {
   try {
     const code = await generateUniqueCode();
+    const groupId = new mongoose.Types.ObjectId().toString();
     const book = new Book({
       ...req.body,
       code,
       imageUrl: req.body.imageUrl || '',
-      copies: 1 // Set initial copies count
+      condition: req.body.condition || 'good', // Default to 'good' if not provided
+      groupId,
     });
     const newBook = await book.save();
     res.status(201).json(newBook);
@@ -63,16 +66,35 @@ exports.deleteBook = async (req, res) => {
 
 exports.copyBook = async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id);
-    if (!book) {
+    const originalBook = await Book.findById(req.params.id);
+    if (!originalBook) {
       return res.status(404).json({ message: 'Book not found' });
     }
 
-    // Increment the copies count
-    book.copies += 1;
-    await book.save();
+    const newBook = new Book({
+      title: originalBook.title,
+      author: originalBook.author,
+      editorial: originalBook.editorial,
+      edition: originalBook.edition,
+      category: req.body.category || originalBook.category,
+      coverType: req.body.coverType || originalBook.coverType,
+      location: req.body.location || originalBook.location,
+      cost: req.body.cost || originalBook.cost,
+      dateAcquired: new Date(),
+      status: 'available',
+      observations: req.body.observations || '',
+      imageUrl: req.body.imageUrl || originalBook.imageUrl,
+      condition: req.body.condition || 'new',
+      code: await generateUniqueCode(),
+      groupId: originalBook.groupId,
+    });
 
-    res.status(200).json(book);
+    const savedBook = await newBook.save();
+
+    // Update copiesCount for all books in the group
+    await Book.updateMany({ groupId: originalBook.groupId }, { $inc: { copiesCount: 1 } });
+
+    res.status(201).json(savedBook);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -81,7 +103,7 @@ exports.copyBook = async (req, res) => {
 exports.searchBooks = async (req, res) => {
   try {
     const { q } = req.query;
-    console.log('Search query:', q); // Log the search query
+    console.log('Search query:', q);
 
     if (!q || q.trim() === '') {
       return res.json({ books: [] });
@@ -89,19 +111,40 @@ exports.searchBooks = async (req, res) => {
 
     const searchRegex = new RegExp(q.trim(), 'i');
 
-    const books = await Book.find({ 
-      $or: [
-        { title: searchRegex },
-        { author: searchRegex },
-        { code: searchRegex }
-      ]
-    }).limit(10);
+    const books = await Book.aggregate([
+      {
+        $match: {
+          $or: [
+            { title: searchRegex },
+            { author: searchRegex },
+            { code: searchRegex }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: '$groupId',
+          book: { $first: '$$ROOT' },
+          copiesCount: { $sum: 1 }
+        }
+      },
+      {
+        $replaceRoot: {
+          newRoot: {
+            $mergeObjects: ['$book', { copiesCount: '$copiesCount' }]
+          }
+        }
+      },
+      {
+        $limit: 10
+      }
+    ]);
 
-    console.log('Search results:', books); // Log the search results
+    console.log('Search results:', books);
 
     res.json({ books });
   } catch (err) {
-    console.error('Error in searchBooks:', err); // Log any errors
+    console.error('Error in searchBooks:', err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -113,14 +156,15 @@ exports.decreaseCopy = async (req, res) => {
       return res.status(404).json({ message: 'Book not found' });
     }
 
-    if (book.copies > 1) {
-      book.copies -= 1;
-      await book.save();
-      res.status(200).json(book);
+    if (book.copiesCount > 1) {
+      // Decrease copiesCount for all books in the group
+      await Book.updateMany({ groupId: book.groupId }, { $inc: { copiesCount: -1 } });
+      const updatedBook = await Book.findById(req.params.id);
+      res.status(200).json(updatedBook);
     } else {
-      // If it's the last copy, you might want to delete the book entirely
-      await Book.findByIdAndDelete(req.params.id);
-      res.status(200).json({ message: 'Last copy removed, book deleted' });
+      // If it's the last copy, delete all books with the same groupId
+      await Book.deleteMany({ groupId: book.groupId });
+      res.status(200).json({ message: 'Last copy removed, all related books deleted' });
     }
   } catch (err) {
     res.status(400).json({ message: err.message });

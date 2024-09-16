@@ -14,7 +14,9 @@ const bookSchema = new mongoose.Schema({
   status: { type: String, default: 'available' },
   observations: { type: String, default: '' },
   imageUrl: { type: String, default: '' },
-  copies: { type: Number, default: 1 } // Add this line
+  copiesCount: { type: Number, default: 1 }, // Rename 'copies' to 'copiesCount'
+  condition: { type: String, enum: ['good', 'regular', 'bad'], required: true },
+  groupId: { type: String, required: true }, // Add this line
 });
 
 module.exports = mongoose.model('Book', bookSchema);

@@ -34,7 +34,8 @@ exports.createBook = async (req, res) => {
       ...req.body,
       code,
       imageUrl: req.body.imageUrl || '',
-      condition: req.body.condition || 'good', // Default to 'good' if not provided
+      condition: req.body.condition || 'good',
+      categories: req.body.categories || [], // Handle multiple categories
       groupId,
     });
     const newBook = await book.save();
@@ -168,5 +169,14 @@ exports.decreaseCopy = async (req, res) => {
     }
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+};
+
+exports.getAllCategories = async (req, res) => {
+  try {
+    const categories = await Book.distinct('categories');
+    res.json({ categories });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };

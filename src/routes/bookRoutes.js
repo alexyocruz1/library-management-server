@@ -13,5 +13,6 @@ router.put('/:id', bookController.updateBook);
 router.delete('/:id', bookController.deleteBook);
 router.post('/:id/copy', bookController.copyBook);
 router.post('/:id/decrease-copy', bookController.decreaseCopy);
+router.get('/categories', bookController.getAllCategories);
 
 module.exports = router;

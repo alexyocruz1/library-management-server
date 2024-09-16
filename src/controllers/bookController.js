@@ -41,10 +41,12 @@ exports.createBook = async (req, res) => {
     const book = new Book({
       ...req.body,
       code,
-      invoiceCode: req.body.invoiceCode, // Add this line
+      invoiceCode: req.body.invoiceCode,
       imageUrl: req.body.imageUrl || '',
       condition: req.body.condition || 'good',
-      categories: req.body.categories || [], // Handle multiple categories
+      categories: req.body.categories || [],
+      coverType: ['hard', 'soft'].includes(req.body.coverType) ? req.body.coverType : 'soft',
+      cost: parseFloat(req.body.cost).toFixed(2), // Round to 2 decimal places
       groupId,
     });
     const newBook = await book.save();
@@ -82,20 +84,20 @@ exports.copyBook = async (req, res) => {
     }
 
     const newBook = new Book({
-      invoiceCode: req.body.invoiceCode || originalBook.invoiceCode, // Add this line
+      invoiceCode: req.body.invoiceCode || originalBook.invoiceCode,
       title: originalBook.title,
       author: originalBook.author,
       editorial: originalBook.editorial,
       edition: originalBook.edition,
       categories: req.body.categories || originalBook.categories,
-      coverType: req.body.coverType || originalBook.coverType,
+      coverType: ['hard', 'soft'].includes(req.body.coverType) ? req.body.coverType : originalBook.coverType,
       location: req.body.location || originalBook.location,
-      cost: req.body.cost || originalBook.cost,
+      cost: parseFloat(req.body.cost || originalBook.cost).toFixed(2), // Round to 2 decimal places
       dateAcquired: new Date(),
       status: 'available',
       observations: req.body.observations || '',
       imageUrl: req.body.imageUrl || originalBook.imageUrl,
-      condition: req.body.condition || 'good', // Change 'new' to 'good' or another valid condition
+      condition: req.body.condition || 'good',
       code: await generateUniqueCode(),
       groupId: originalBook.groupId,
     });

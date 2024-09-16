@@ -8,9 +8,14 @@ const bookSchema = new mongoose.Schema({
   editorial: { type: String, required: true },
   edition: { type: String, required: true },
   categories: [{ type: String, required: true }], // Changed from 'category' to 'categories'
-  coverType: { type: String, required: true },
+  coverType: { type: String, enum: ['hard', 'soft'], required: true },
   location: { type: String, required: true },
-  cost: { type: Number, required: true },
+  cost: { 
+    type: Number, 
+    required: true,
+    get: (v) => v.toFixed(2),
+    set: (v) => parseFloat(v.toFixed(2))
+  },
   dateAcquired: { type: Date, required: true },
   status: { type: String, default: 'available' },
   observations: { type: String, default: '' },
@@ -19,5 +24,7 @@ const bookSchema = new mongoose.Schema({
   condition: { type: String, enum: ['good', 'regular', 'bad', 'new'], required: true },
   groupId: { type: String, required: true }, // Add this line
 });
+
+bookSchema.set('toJSON', { getters: true });
 
 module.exports = mongoose.model('Book', bookSchema);

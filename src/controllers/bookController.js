@@ -46,7 +46,7 @@ exports.createBook = async (req, res) => {
       condition: req.body.condition || 'good',
       categories: req.body.categories || [],
       coverType: ['hard', 'soft'].includes(req.body.coverType) ? req.body.coverType : 'soft',
-      cost: parseFloat(req.body.cost), // Change this line
+      cost: parseFloat(parseFloat(req.body.cost).toFixed(2)),
       groupId,
     });
     const newBook = await book.save();
@@ -92,7 +92,7 @@ exports.copyBook = async (req, res) => {
       categories: req.body.categories || originalBook.categories,
       coverType: ['hard', 'soft'].includes(req.body.coverType) ? req.body.coverType : originalBook.coverType,
       location: req.body.location || originalBook.location,
-      cost: parseFloat(req.body.cost || originalBook.cost),
+      cost: parseFloat(parseFloat(req.body.cost || originalBook.cost).toFixed(2)),
       dateAcquired: new Date(),
       status: 'available',
       observations: req.body.observations || '',

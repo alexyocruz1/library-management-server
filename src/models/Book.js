@@ -14,7 +14,7 @@ const bookSchema = new mongoose.Schema({
     type: Number, 
     required: true,
     get: (v) => v.toFixed(2),
-    set: (v) => parseFloat(v.toFixed(2))
+    set: (v) => parseFloat(parseFloat(v).toFixed(2))
   },
   dateAcquired: { type: Date, required: true },
   status: { type: String, default: 'available' },

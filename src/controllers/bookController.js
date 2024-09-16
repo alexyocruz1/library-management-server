@@ -82,11 +82,12 @@ exports.copyBook = async (req, res) => {
     }
 
     const newBook = new Book({
+      invoiceCode: req.body.invoiceCode || originalBook.invoiceCode, // Add this line
       title: originalBook.title,
       author: originalBook.author,
       editorial: originalBook.editorial,
       edition: originalBook.edition,
-      category: req.body.category || originalBook.category,
+      categories: req.body.categories || originalBook.categories,
       coverType: req.body.coverType || originalBook.coverType,
       location: req.body.location || originalBook.location,
       cost: req.body.cost || originalBook.cost,

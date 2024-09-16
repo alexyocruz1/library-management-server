@@ -46,7 +46,7 @@ exports.createBook = async (req, res) => {
       condition: req.body.condition || 'good',
       categories: req.body.categories || [],
       coverType: ['hard', 'soft'].includes(req.body.coverType) ? req.body.coverType : 'soft',
-      cost: parseFloat(req.body.cost).toFixed(2), // Round to 2 decimal places
+      cost: parseFloat(req.body.cost), // Change this line
       groupId,
     });
     const newBook = await book.save();

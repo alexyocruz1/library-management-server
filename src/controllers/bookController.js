@@ -2,9 +2,17 @@ const Book = require('../models/Book');
 const mongoose = require('mongoose'); // Add this line at the top of the file
 
 const generateUniqueCode = async () => {
-  // Implement a function to generate a unique code
-  // For example, you could use a combination of timestamp and random string
-  return `BOOK-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+  let code;
+  let isUnique = false;
+  while (!isUnique) {
+    const randomPart = Math.random().toString(36).substr(2, 5).toUpperCase();
+    code = `${randomPart}-HAYE`;
+    const existingBook = await Book.findOne({ code });
+    if (!existingBook) {
+      isUnique = true;
+    }
+  }
+  return code;
 };
 
 exports.getAllBooks = async (req, res) => {

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const bookSchema = new mongoose.Schema({
+  invoiceCode: { type: String, required: true }, // Add this line
   code: { type: String, unique: true, required: true },
   title: { type: String, required: true },
   author: { type: String, required: true },

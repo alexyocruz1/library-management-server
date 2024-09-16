@@ -33,6 +33,7 @@ exports.createBook = async (req, res) => {
     const book = new Book({
       ...req.body,
       code,
+      invoiceCode: req.body.invoiceCode, // Add this line
       imageUrl: req.body.imageUrl || '',
       condition: req.body.condition || 'good',
       categories: req.body.categories || [], // Handle multiple categories

@@ -16,7 +16,7 @@ const bookSchema = new mongoose.Schema({
   observations: { type: String, default: '' },
   imageUrl: { type: String, default: '' },
   copiesCount: { type: Number, default: 1 }, // Rename 'copies' to 'copiesCount'
-  condition: { type: String, enum: ['good', 'regular', 'bad'], required: true },
+  condition: { type: String, enum: ['good', 'regular', 'bad', 'new'], required: true },
   groupId: { type: String, required: true }, // Add this line
 });
 

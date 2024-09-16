@@ -95,7 +95,7 @@ exports.copyBook = async (req, res) => {
       status: 'available',
       observations: req.body.observations || '',
       imageUrl: req.body.imageUrl || originalBook.imageUrl,
-      condition: req.body.condition || 'new',
+      condition: req.body.condition || 'good', // Change 'new' to 'good' or another valid condition
       code: await generateUniqueCode(),
       groupId: originalBook.groupId,
     });

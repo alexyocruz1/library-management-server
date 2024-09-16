@@ -92,7 +92,7 @@ exports.copyBook = async (req, res) => {
       categories: req.body.categories || originalBook.categories,
       coverType: ['hard', 'soft'].includes(req.body.coverType) ? req.body.coverType : originalBook.coverType,
       location: req.body.location || originalBook.location,
-      cost: parseFloat(req.body.cost || originalBook.cost).toFixed(2), // Round to 2 decimal places
+      cost: parseFloat(req.body.cost || originalBook.cost),
       dateAcquired: new Date(),
       status: 'available',
       observations: req.body.observations || '',

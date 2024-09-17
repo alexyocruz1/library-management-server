@@ -17,8 +17,61 @@ const generateUniqueCode = async () => {
 
 exports.getAllBooks = async (req, res) => {
   try {
-    const books = await Book.find();
-    res.json({books});
+    const { page = 1, search = '', category = '' } = req.query;
+    const limit = 12; // Changed from 20 to 12
+    const skip = (page - 1) * limit;
+
+    const searchRegex = new RegExp(search, 'i');
+    const categoryRegex = new RegExp(category, 'i');
+
+    const books = await Book.aggregate([
+      {
+        $match: {
+          $and: [
+            {
+              $or: [
+                { title: searchRegex },
+                { author: searchRegex },
+                { code: searchRegex }
+              ]
+            },
+            category ? { categories: categoryRegex } : {}
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: '$groupId',
+          book: { $first: '$$ROOT' },
+          copiesCount: { $sum: 1 }
+        }
+      },
+      {
+        $replaceRoot: {
+          newRoot: {
+            $mergeObjects: ['$book', { copiesCount: '$copiesCount' }]
+          }
+        }
+      },
+      { $sort: { title: 1 } },
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }, { $addFields: { page: parseInt(page) } }],
+          data: [{ $skip: skip }, { $limit: limit }]
+        }
+      }
+    ]);
+
+    const { metadata, data } = books[0];
+    const totalBooks = metadata[0]?.total || 0;
+    const totalPages = Math.ceil(totalBooks / limit);
+
+    res.json({
+      books: data,
+      currentPage: parseInt(page),
+      totalPages,
+      totalBooks
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -81,7 +81,27 @@ exports.getBookById = async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
     if (!book) return res.status(404).json({ message: 'Book not found' });
-    res.json(book);
+    
+    // Fetch all copies of the book
+    const copies = await Book.find({ groupId: book.groupId });
+    
+    // Combine the book details with its copies
+    const bookWithCopies = {
+      ...book.toObject(),
+      copies: copies.map(copy => ({
+        _id: copy._id,
+        invoiceCode: copy.invoiceCode,
+        code: copy.code,
+        location: copy.location,
+        cost: copy.cost,
+        dateAcquired: copy.dateAcquired,
+        status: copy.status,
+        condition: copy.condition,
+        observations: copy.observations
+      }))
+    };
+    
+    res.json(bookWithCopies);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

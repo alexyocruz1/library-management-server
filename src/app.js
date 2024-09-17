@@ -11,7 +11,9 @@ const bookRoutes = require('./routes/bookRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
 const userRoutes = require('./routes/userRoutes');
 
-const mongoURI = process.env.MONGO_URI;
+const mongoURI = process.env.NODE_ENV === 'production' 
+  ? process.env.MONGO_URI 
+  : process.env.MONGO_URI_LOCAL;
 
 mongoose.connect(mongoURI, {
   useNewUrlParser: true,

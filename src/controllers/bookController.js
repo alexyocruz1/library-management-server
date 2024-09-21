@@ -17,27 +17,30 @@ const generateUniqueCode = async () => {
 
 exports.getAllBooks = async (req, res) => {
   try {
-    const { page = 1, search = '', category = '' } = req.query;
+    const { page = 1, search = '', category = '', company } = req.query; // Include company
     const limit = 12; // Changed from 20 to 12
     const skip = (page - 1) * limit;
 
     const searchRegex = new RegExp(search, 'i');
     const categoryRegex = new RegExp(category, 'i');
 
+    const matchCriteria = {
+      $and: [
+        {
+          $or: [
+            { title: searchRegex },
+            { author: searchRegex },
+            { code: searchRegex }
+          ]
+        },
+        category ? { categories: categoryRegex } : {},
+        company ? { company } : {} // Filter by company
+      ]
+    };
+
     const books = await Book.aggregate([
       {
-        $match: {
-          $and: [
-            {
-              $or: [
-                { title: searchRegex },
-                { author: searchRegex },
-                { code: searchRegex }
-              ]
-            },
-            category ? { categories: categoryRegex } : {}
-          ]
-        }
+        $match: matchCriteria
       },
       {
         $group: {
@@ -121,6 +124,7 @@ exports.createBook = async (req, res) => {
       coverType: ['hard', 'soft'].includes(req.body.coverType) ? req.body.coverType : 'soft',
       cost: parseFloat(parseFloat(req.body.cost).toFixed(2)),
       groupId,
+      company: req.body.company, // Save the company
     });
     const newBook = await book.save();
     res.status(201).json(newBook);

@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   verified: { type: Boolean, default: false },
+  company: { type: String, enum: ['HAYE', 'ITSM', 'EAHAYE'], required: true }, // New field for company
   createdAt: { type: Date, default: Date.now }
 });
 

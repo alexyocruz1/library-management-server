@@ -3,8 +3,8 @@ const jwt = require('jsonwebtoken');
 
 exports.signup = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
-    const user = new User({ username, email, password, verified: false });
+    const { username, email, password, company } = req.body; // Include company
+    const user = new User({ username, email, password, company, verified: false });
     await user.save();
     res.status(201).json({ success: true, message: 'User created successfully. Please verify your email.' });
   } catch (error) {

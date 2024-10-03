@@ -17,12 +17,12 @@ const generateUniqueCode = async () => {
 
 exports.getAllBooks = async (req, res) => {
   try {
-    const { page = 1, search = '', category = '', company } = req.query; // Include company
-    const limit = 12; // Changed from 20 to 12
+    const { page = 1, search = '', categories = '', company } = req.query;
+    const limit = 12;
     const skip = (page - 1) * limit;
 
     const searchRegex = new RegExp(search, 'i');
-    const categoryRegex = new RegExp(category, 'i');
+    const categoryArray = categories.split(',').filter(Boolean);
 
     const matchCriteria = {
       $and: [
@@ -33,15 +33,13 @@ exports.getAllBooks = async (req, res) => {
             { code: searchRegex }
           ]
         },
-        category ? { categories: categoryRegex } : {},
-        company ? { company } : {} // Filter by company
+        categoryArray.length > 0 ? { categories: { $in: categoryArray } } : {},
+        company ? { company } : {}
       ]
     };
 
     const books = await Book.aggregate([
-      {
-        $match: matchCriteria
-      },
+      { $match: matchCriteria },
       {
         $group: {
           _id: '$groupId',
@@ -124,7 +122,7 @@ exports.createBook = async (req, res) => {
       coverType: ['hard', 'soft'].includes(req.body.coverType) ? req.body.coverType : 'soft',
       cost: parseFloat(parseFloat(req.body.cost).toFixed(2)),
       groupId,
-      company: req.body.company, // Save the company
+      company: req.body.company, // Ensure this line is present
     });
     const newBook = await book.save();
     res.status(201).json(newBook);
@@ -265,6 +263,16 @@ exports.getAllCategories = async (req, res) => {
   try {
     const categories = await Book.distinct('categories');
     res.json({ categories });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Add a new function to get all companies
+exports.getAllCompanies = async (req, res) => {
+  try {
+    const companies = await Book.distinct('company');
+    res.json({ companies });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

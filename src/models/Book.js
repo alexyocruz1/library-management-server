@@ -23,6 +23,7 @@ const bookSchema = new mongoose.Schema({
   copiesCount: { type: Number, default: 1 }, // Rename 'copies' to 'copiesCount'
   condition: { type: String, enum: ['good', 'regular', 'bad', 'new'], required: true },
   groupId: { type: String, required: true }, // Add this line
+  company: { type: String, required: true }, // Add this line
 });
 
 bookSchema.set('toJSON', { getters: true });

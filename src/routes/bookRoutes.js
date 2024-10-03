@@ -6,6 +6,9 @@ const bookController = require('../controllers/bookController');
 router.get('/search', bookController.searchBooks);
 router.get('/categories', bookController.getAllCategories);
 
+// Add this line near the top of the file
+router.get('/companies', bookController.getAllCompanies);
+
 // Then define the more general routes
 router.get('/', bookController.getAllBooks);
 router.post('/', bookController.createBook);

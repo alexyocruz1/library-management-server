@@ -30,7 +30,11 @@ exports.login = async (req, res) => {
       throw new Error('JWT_SECRET is not defined');
     }
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign(
+      { userId: user._id, company: user.company },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
     res.json({ 
       success: true, 
       token, 
@@ -39,7 +43,8 @@ exports.login = async (req, res) => {
         username: user.username, 
         email: user.email, 
         role: user.role,
-        verified: user.verified 
+        verified: user.verified,
+        company: user.company // Include company in the response
       } 
     });
   } catch (error) {

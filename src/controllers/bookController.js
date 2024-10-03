@@ -122,11 +122,12 @@ exports.createBook = async (req, res) => {
       coverType: ['hard', 'soft'].includes(req.body.coverType) ? req.body.coverType : 'soft',
       cost: parseFloat(parseFloat(req.body.cost).toFixed(2)),
       groupId,
-      company: req.body.company, // Ensure this line is present
+      company: req.body.company, // Use the company from the request
     });
     const newBook = await book.save();
     res.status(201).json(newBook);
   } catch (err) {
+    console.error('Error creating book:', err);
     res.status(400).json({ message: err.message });
   }
 };

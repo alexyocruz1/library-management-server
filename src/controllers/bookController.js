@@ -152,9 +152,13 @@ exports.updateBook = async (req, res) => {
 
 exports.deleteBook = async (req, res) => {
   try {
-    const book = await Book.findByIdAndDelete(req.params.id);
+    const book = await Book.findById(req.params.id);
     if (!book) return res.status(404).json({ message: 'Book not found' });
-    res.json({ message: 'Book deleted' });
+
+    // Delete all copies of the book
+    await Book.deleteMany({ groupId: book.groupId });
+
+    res.json({ message: 'Book and all its copies deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -279,7 +283,10 @@ exports.searchBooks = async (req, res) => {
 
 exports.decreaseCopy = async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id);
+    const { id } = req.params;
+    const { copyId } = req.body;
+
+    const book = await Book.findById(id);
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });
     }
@@ -287,8 +294,8 @@ exports.decreaseCopy = async (req, res) => {
     const copiesCount = await Book.countDocuments({ groupId: book.groupId });
 
     if (copiesCount > 1) {
-      // Remove this specific copy
-      await Book.findByIdAndDelete(req.params.id);
+      // Remove the specific copy
+      await Book.findByIdAndDelete(copyId);
 
       // Update copiesCount for remaining books in the group
       const updatedCopiesCount = copiesCount - 1;

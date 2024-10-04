@@ -129,7 +129,7 @@ exports.createBook = async (req, res) => {
       coverType: ['hard', 'soft'].includes(req.body.coverType) ? req.body.coverType : 'soft',
       cost: parseFloat(parseFloat(req.body.cost).toFixed(2)),
       groupId,
-      company: req.body.company,
+      company: req.body.company, // Ensure this line is present
       copiesCount: 1
     });
     const newBook = await book.save();

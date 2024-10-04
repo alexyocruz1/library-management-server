@@ -34,7 +34,7 @@ exports.getAllBooks = async (req, res) => {
           ]
         },
         categoryArray.length > 0 ? { categories: { $in: categoryArray } } : {},
-        company ? { company } : {}
+        company && company !== 'all' ? { company } : {} // Only filter by company if it's not 'all'
       ]
     };
 
@@ -176,6 +176,7 @@ exports.copyBook = async (req, res) => {
       condition: req.body.condition || 'good',
       code: await generateUniqueCode(),
       groupId: originalBook.groupId,
+      company: req.body.company || originalBook.company,
     });
 
     const savedBook = await newBook.save();
@@ -183,8 +184,16 @@ exports.copyBook = async (req, res) => {
     // Update copiesCount for all books in the group
     await Book.updateMany({ groupId: originalBook.groupId }, { $inc: { copiesCount: 1 } });
 
-    res.status(201).json(savedBook);
+    // Get the updated copiesCount
+    const updatedCopiesCount = await Book.countDocuments({ groupId: originalBook.groupId });
+
+    // Include the updated copiesCount in the response
+    res.status(201).json({
+      ...savedBook.toObject(),
+      copiesCount: updatedCopiesCount
+    });
   } catch (err) {
+    console.error('Error copying book:', err);
     res.status(400).json({ message: err.message });
   }
 };

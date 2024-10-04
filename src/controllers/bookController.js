@@ -39,7 +39,7 @@ exports.getAllBooks = async (req, res) => {
           ]
         },
         categoryArray.length > 0 ? { categories: { $in: categoryArray } } : {},
-        company ? { company } : {}
+        company && company !== 'all' ? { company } : {}
       ]
     };
 

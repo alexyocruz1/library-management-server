@@ -161,14 +161,11 @@ exports.deleteBook = async (req, res) => {
 };
 
 exports.copyBook = async (req, res) => {
-  console.log('Starting copyBook function');
   try {
     const originalBook = await Book.findById(req.params.id);
     if (!originalBook) {
-      console.log('Original book not found');
       return res.status(404).json({ message: 'Book not found' });
     }
-    console.log('Original book found:', originalBook);
 
     const newBook = new Book({
       invoiceCode: req.body.invoiceCode || originalBook.invoiceCode,
@@ -190,14 +187,10 @@ exports.copyBook = async (req, res) => {
       groupId: originalBook.groupId
     });
 
-    console.log('New book object created:', newBook);
-
     const savedBook = await newBook.save();
-    console.log('New book saved:', savedBook);
 
     // Get the updated copiesCount
     const updatedCopiesCount = await Book.countDocuments({ groupId: originalBook.groupId });
-    console.log('Updated copies count:', updatedCopiesCount);
 
     // Update copiesCount for all books in the group
     await Book.updateMany(
@@ -210,7 +203,6 @@ exports.copyBook = async (req, res) => {
       ...savedBook.toObject(),
       copiesCount: updatedCopiesCount
     };
-    console.log('Response data:', responseData);
 
     res.status(201).json(responseData);
   } catch (err) {
@@ -222,8 +214,6 @@ exports.copyBook = async (req, res) => {
 exports.searchBooks = async (req, res) => {
   try {
     const { q, company } = req.query;
-    console.log('Search query:', q);
-    console.log('Company:', company);
 
     if (!q || q.trim() === '') {
       return res.json({ books: [] });
@@ -279,8 +269,6 @@ exports.searchBooks = async (req, res) => {
         $limit: 10
       }
     ]);
-
-    console.log('Search results:', JSON.stringify(books, null, 2));
 
     res.json({ books });
   } catch (err) {

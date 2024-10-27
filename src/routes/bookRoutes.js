@@ -9,6 +9,9 @@ router.get('/categories', bookController.getAllCategories);
 // Add this line near the top of the file
 router.get('/companies', bookController.getAllCompanies);
 
+// Add this new route
+router.get('/group/:groupId', bookController.getBookByGroupId);
+
 // Then define the more general routes
 router.get('/', bookController.getAllBooks);
 router.post('/', bookController.createBook);

@@ -23,6 +23,12 @@ const generateUniqueCode = async () => {
 exports.getAllBooks = async (req, res) => {
   try {
     const { page = 1, search = '', categories = '', company } = req.query;
+    
+    // Require company parameter
+    if (!company) {
+      return res.status(400).json({ message: 'Company parameter is required' });
+    }
+
     const limit = 12;
     const skip = (page - 1) * limit;
 
@@ -39,7 +45,7 @@ exports.getAllBooks = async (req, res) => {
           ]
         },
         categoryArray.length > 0 ? { categories: { $in: categoryArray } } : {},
-        company && company !== 'all' ? { company } : {}
+        { company } // Always include company filter
       ]
     };
 
@@ -79,6 +85,7 @@ exports.getAllBooks = async (req, res) => {
       totalBooks
     });
   } catch (err) {
+    console.error('Error in getAllBooks:', err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -86,31 +93,44 @@ exports.getAllBooks = async (req, res) => {
 exports.getBookById = async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
-    if (!book) return res.status(404).json({ message: 'Book not found' });
+    if (!book) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+
+    // Get all copies of the book using groupId
+    const copies = await Book.find({ groupId: book.groupId }).lean();
     
-    // Fetch all copies of the book and get the count
-    const copies = await Book.find({ groupId: book.groupId });
+    // Get the total count
     const copiesCount = copies.length;
-    
-    // Combine the book details with its copies and copiesCount
-    const bookWithCopies = {
-      ...book.toObject(),
-      copies: copies.map(copy => ({
-        _id: copy._id,
-        invoiceCode: copy.invoiceCode,
-        code: copy.code,
-        location: copy.location,
-        cost: copy.cost,
-        dateAcquired: copy.dateAcquired,
-        status: copy.status,
-        condition: copy.condition,
-        observations: copy.observations
-      })),
+
+    // Create the response object with all necessary fields
+    const bookResponse = {
+      _id: book._id,
+      title: book.title,
+      author: book.author,
+      editorial: book.editorial,
+      edition: book.edition,
+      categories: book.categories,
+      coverType: book.coverType,
+      imageUrl: book.imageUrl,
+      status: book.status,
+      condition: book.condition,
+      location: book.location,
+      company: book.company,
+      code: book.code,
+      cost: book.cost,
+      dateAcquired: book.dateAcquired,
+      observations: book.observations,
+      description: book.description,
+      invoiceCode: book.invoiceCode,
+      groupId: book.groupId,
+      copies: copies,
       copiesCount: copiesCount
     };
-    
-    res.json(bookWithCopies);
+
+    res.json(bookResponse);
   } catch (err) {
+    console.error('Error in getBookById:', err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -286,29 +306,60 @@ exports.decreaseCopy = async (req, res) => {
     const { id } = req.params;
     const { copyId } = req.body;
 
+    // First find the book to get the groupId
     const book = await Book.findById(id);
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });
     }
 
-    const copiesCount = await Book.countDocuments({ groupId: book.groupId });
+    const groupId = book.groupId;
 
-    if (copiesCount > 1) {
-      // Remove the specific copy
-      await Book.findByIdAndDelete(copyId);
+    // Get total copies before deletion
+    const totalCopies = await Book.countDocuments({ groupId });
 
-      // Update copiesCount for remaining books in the group
-      const updatedCopiesCount = copiesCount - 1;
-      await Book.updateMany({ groupId: book.groupId }, { $set: { copiesCount: updatedCopiesCount } });
-
-      res.status(200).json({ message: 'Copy removed', copiesCount: updatedCopiesCount });
-    } else {
-      // If it's the last copy, delete all books with the same groupId
-      await Book.deleteMany({ groupId: book.groupId });
-      res.status(200).json({ message: 'Last copy removed, all related books deleted' });
+    if (totalCopies === 1) {
+      // If this is the last copy, delete the entire group
+      await Book.deleteMany({ groupId });
+      return res.status(200).json({ 
+        message: 'Last copy removed, all related books deleted',
+        copiesCount: 0
+      });
     }
+
+    // Delete the specific copy
+    const deletedCopy = await Book.findByIdAndDelete(copyId);
+    if (!deletedCopy) {
+      return res.status(404).json({ message: 'Copy not found' });
+    }
+
+    // Get remaining copies
+    const remainingCopies = await Book.find({ groupId }).lean();
+    const updatedCopiesCount = remainingCopies.length;
+
+    // Update copiesCount for all remaining copies
+    await Book.updateMany(
+      { groupId },
+      { $set: { copiesCount: updatedCopiesCount } }
+    );
+
+    // Get the first remaining copy as the main book
+    const mainBook = remainingCopies[0];
+    if (!mainBook) {
+      return res.status(404).json({ message: 'No remaining copies found' });
+    }
+
+    // Return the updated book data
+    return res.status(200).json({
+      message: 'Copy removed successfully',
+      book: {
+        ...mainBook,
+        copies: remainingCopies,
+        copiesCount: updatedCopiesCount
+      }
+    });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error('Error in decreaseCopy:', err);
+    return res.status(500).json({ message: err.message });
   }
 };
 
@@ -327,6 +378,53 @@ exports.getAllCompanies = async (req, res) => {
     const companies = await Book.distinct('company');
     res.json({ companies });
   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getBookByGroupId = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    
+    // Get all copies with this groupId
+    const copies = await Book.find({ groupId }).lean();
+    
+    if (!copies || copies.length === 0) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+
+    // Use the first copy as the main book data
+    const mainBook = copies[0];
+    const copiesCount = copies.length;
+
+    // Create the response object
+    const bookResponse = {
+      _id: mainBook._id,
+      title: mainBook.title,
+      author: mainBook.author,
+      editorial: mainBook.editorial,
+      edition: mainBook.edition,
+      categories: mainBook.categories,
+      coverType: mainBook.coverType,
+      imageUrl: mainBook.imageUrl,
+      status: mainBook.status,
+      condition: mainBook.condition,
+      location: mainBook.location,
+      company: mainBook.company,
+      code: mainBook.code,
+      cost: mainBook.cost,
+      dateAcquired: mainBook.dateAcquired,
+      observations: mainBook.observations,
+      description: mainBook.description,
+      invoiceCode: mainBook.invoiceCode,
+      groupId: mainBook.groupId,
+      copies: copies,
+      copiesCount: copiesCount
+    };
+
+    res.json(bookResponse);
+  } catch (err) {
+    console.error('Error in getBookByGroupId:', err);
     res.status(500).json({ message: err.message });
   }
 };

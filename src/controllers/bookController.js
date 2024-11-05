@@ -428,3 +428,42 @@ exports.getBookByGroupId = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Update general book information
+exports.updateGeneralInfo = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const updateData = req.body;
+
+    // Update all books with the same groupId
+    const updatedBooks = await Book.updateMany(
+      { groupId },
+      { $set: updateData }
+    );
+
+    // Get the updated book data
+    const updatedBook = await Book.findOne({ groupId });
+    
+    res.json(updatedBook);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Update specific copy information
+exports.updateCopyInfo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const updatedBook = await Book.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true }
+    );
+
+    res.json(updatedBook);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

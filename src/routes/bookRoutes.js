@@ -21,4 +21,8 @@ router.delete('/:id', bookController.deleteBook);
 router.post('/:id/copy', bookController.copyBook);
 router.post('/:id/decrease-copy', bookController.decreaseCopy);
 
+// Add these new routes
+router.put('/:groupId/general', bookController.updateGeneralInfo);
+router.put('/:id/copy', bookController.updateCopyInfo);
+
 module.exports = router;

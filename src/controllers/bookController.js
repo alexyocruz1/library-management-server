@@ -245,52 +245,64 @@ exports.searchBooks = async (req, res) => {
 
     const searchRegex = new RegExp(q.trim(), 'i');
 
-    const matchCriteria = {
-      $and: [
-        {
-          $or: [
-            { title: searchRegex },
-            { author: searchRegex },
-            { code: searchRegex }
-          ]
-        },
-        { company: company }
-      ]
-    };
-
     const books = await Book.aggregate([
-      { $match: matchCriteria },
+      {
+        $match: {
+          $and: [
+            {
+              $or: [
+                { title: searchRegex },
+                { author: searchRegex },
+                { code: searchRegex }
+              ]
+            },
+            { company: company }
+          ]
+        }
+      },
       {
         $group: {
           _id: '$groupId',
           book: { $first: '$$ROOT' },
-        }
-      },
-      {
-        $lookup: {
-          from: 'books',
-          let: { groupId: '$_id' },
-          pipeline: [
-            { $match: { $expr: { $eq: ['$groupId', '$$groupId'] } } },
-            { $count: 'count' }
-          ],
-          as: 'copiesCount'
-        }
-      },
-      {
-        $addFields: {
-          copiesCount: { $arrayElemAt: ['$copiesCount.count', 0] }
-        }
-      },
-      {
-        $replaceRoot: {
-          newRoot: {
-            $mergeObjects: ['$book', { copiesCount: '$copiesCount' }]
+          availableCopies: {
+            $push: {
+              $cond: [
+                { $eq: ['$status', 'available'] },
+                {
+                  _id: '$_id',
+                  code: '$code',
+                  condition: '$condition'
+                },
+                null
+              ]
+            }
           }
         }
       },
       {
-        $limit: 10
+        $project: {
+          _id: '$book._id',
+          title: '$book.title',
+          author: '$book.author',
+          editorial: '$book.editorial',
+          edition: '$book.edition',
+          categories: '$book.categories',
+          coverType: '$book.coverType',
+          imageUrl: '$book.imageUrl',
+          status: '$book.status',
+          condition: '$book.condition',
+          location: '$book.location',
+          company: '$book.company',
+          code: '$book.code',
+          groupId: '$book.groupId',
+          availableCopies: {
+            $filter: {
+              input: '$availableCopies',
+              as: 'copy',
+              cond: { $ne: ['$$copy', null] }
+            }
+          }
+        }
       }
     ]);
 

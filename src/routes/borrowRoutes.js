@@ -1,12 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const borrowController = require('../controllers/borrowController');
-const auth = require('../middleware/auth');
+const BorrowRecord = require('../models/BorrowRecord');
 
-router.post('/borrow', auth, borrowController.borrowBook);
-router.post('/return/:id', auth, borrowController.returnBook);
-router.get('/history', auth, borrowController.getBorrowHistory);
-router.get('/active', auth, borrowController.getActiveBorrows);
-router.get('/borrower-names', auth, borrowController.getBorrowerNames);
+router.get('/test', async (req, res) => {
+  try {
+    const count = await BorrowRecord.countDocuments({});
+    res.json({ 
+      success: true, 
+      message: 'Borrow routes working', 
+      totalRecords: count 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+});
+
+router.post('/borrow', borrowController.borrowBook);
+router.post('/return/:id', borrowController.returnBook);
+router.get('/history', borrowController.getBorrowHistory);
+router.get('/active', borrowController.getActiveBorrows);
+router.get('/borrower-names', borrowController.getBorrowerNames);
 
 module.exports = router; 

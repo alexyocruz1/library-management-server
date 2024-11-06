@@ -264,17 +264,17 @@ exports.searchBooks = async (req, res) => {
         $group: {
           _id: '$groupId',
           book: { $first: '$$ROOT' },
-          availableCopies: {
+          copies: {
             $push: {
-              $cond: [
-                { $eq: ['$status', 'available'] },
-                {
-                  _id: '$_id',
-                  code: '$code',
-                  condition: '$condition'
-                },
-                null
-              ]
+              _id: '$_id',
+              code: '$code',
+              condition: '$condition',
+              status: '$status',
+              location: '$location',
+              cost: '$cost',
+              dateAcquired: '$dateAcquired',
+              observations: '$observations',
+              invoiceCode: '$invoiceCode'
             }
           }
         }
@@ -294,14 +294,14 @@ exports.searchBooks = async (req, res) => {
           location: '$book.location',
           company: '$book.company',
           code: '$book.code',
+          cost: '$book.cost',
+          dateAcquired: '$book.dateAcquired',
+          observations: '$book.observations',
+          description: '$book.description',
+          invoiceCode: '$book.invoiceCode',
           groupId: '$book.groupId',
-          availableCopies: {
-            $filter: {
-              input: '$availableCopies',
-              as: 'copy',
-              cond: { $ne: ['$$copy', null] }
-            }
-          }
+          copies: '$copies',
+          copiesCount: { $size: '$copies' }
         }
       }
     ]);

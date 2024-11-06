@@ -3,15 +3,32 @@ const Book = require('../models/Book');
 
 exports.borrowBook = async (req, res) => {
   try {
-    const { bookId, copyId, borrowerName, expectedReturnDate, comments } = req.body;
+    const { bookId, copyId, borrowerName, expectedReturnDate, comments, company } = req.body;
 
-    // Find the specific copy and verify it's available
+    // Find the main book first
+    const mainBook = await Book.findById(bookId);
+    if (!mainBook) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Book not found' 
+      });
+    }
+
+    // Find the specific copy within the book's copies
     const bookCopy = await Book.findById(copyId);
     if (!bookCopy) {
-      return res.status(404).json({ success: false, message: 'Book copy not found' });
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Book copy not found' 
+      });
     }
+
+    // Verify the copy is available
     if (bookCopy.status !== 'available') {
-      return res.status(400).json({ success: false, message: 'Book copy is not available' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Book copy is not available' 
+      });
     }
 
     // Create borrow record
@@ -22,19 +39,31 @@ exports.borrowBook = async (req, res) => {
       borrowDate: new Date(),
       expectedReturnDate,
       comments,
-      company: req.user.company,
-      borrowedBy: req.user._id
+      company,
+      borrowedBy: bookCopy._id
     });
 
     await borrowRecord.save();
 
-    // Update specific copy status
+    // Update the copy's status
     bookCopy.status = 'borrowed';
     await bookCopy.save();
 
-    res.status(201).json({ success: true, borrowRecord });
+    // Populate the borrow record with book details
+    const populatedRecord = await BorrowRecord.findById(borrowRecord._id)
+      .populate('book', 'title author');
+
+    res.status(201).json({ 
+      success: true, 
+      borrowRecord: populatedRecord 
+    });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Error in borrowBook:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Error borrowing book'
+    });
   }
 };
 
@@ -59,12 +88,16 @@ exports.returnBook = async (req, res) => {
     borrowRecord.returnDate = new Date();
     borrowRecord.status = 'returned';
     borrowRecord.comments = comments || borrowRecord.comments;
-    borrowRecord.returnedBy = req.user._id;
     
     await borrowRecord.save();
 
-    res.json({ success: true, borrowRecord });
+    // Populate the record before sending response
+    const populatedRecord = await BorrowRecord.findById(borrowRecord._id)
+      .populate('book', 'title author');
+
+    res.json({ success: true, borrowRecord: populatedRecord });
   } catch (error) {
+    console.error('Error in returnBook:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -72,7 +105,7 @@ exports.returnBook = async (req, res) => {
 exports.getBorrowHistory = async (req, res) => {
   try {
     const { search, status, startDate, endDate } = req.query;
-    let query = { company: req.user.company };
+    let query = {};
 
     if (search) {
       query.$or = [
@@ -98,60 +131,132 @@ exports.getBorrowHistory = async (req, res) => {
       .populate('returnedBy', 'username')
       .sort({ borrowDate: -1 });
 
-    // Update overdue status for records
+    // Update overdue status for records and handle null users
     const updatedRecords = await Promise.all(records.map(async record => {
       if (new Date(record.expectedReturnDate) < new Date() && record.status === 'borrowed') {
         record.status = 'overdue';
         await record.save();
       }
-      return record;
+      
+      // Convert to plain object and handle null references
+      const plainRecord = record.toObject();
+      return {
+        ...plainRecord,
+        borrowedBy: plainRecord.borrowedBy || { username: 'Unknown' },
+        returnedBy: plainRecord.returnedBy || { username: 'Unknown' }
+      };
     }));
 
     res.json({ success: true, records: updatedRecords });
   } catch (error) {
+    console.error('Error in getBorrowHistory:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
 exports.getActiveBorrows = async (req, res) => {
   try {
-    const records = await BorrowRecord.find({
-      company: req.user.company,
-      status: 'borrowed'
-    })
-      .populate('book', 'title author')
-      .populate('borrowedBy', 'username')
+    console.log('🔍 Starting getActiveBorrows...');
+    
+    // Log the query we're about to execute
+    const query = {
+      status: { $in: ['borrowed', 'overdue'] }
+    };
+    console.log('📝 Query:', JSON.stringify(query, null, 2));
+    
+    // First, let's count how many documents match our query
+    const count = await BorrowRecord.countDocuments(query);
+    console.log(`📊 Found ${count} matching documents before population`);
+    
+    const records = await BorrowRecord.find(query)
+      .populate({
+        path: 'book',
+        select: 'title author'
+      })
+      .populate({
+        path: 'borrowedBy',
+        select: 'username'
+      })
       .sort({ borrowDate: -1 });
 
+    console.log('📚 Raw records found:', records.length);
+    console.log('📖 First record (if exists):', records[0] ? {
+      id: records[0]._id,
+      book: records[0].book,
+      borrowerName: records[0].borrowerName,
+      status: records[0].status
+    } : 'No records');
+
     // Update overdue status for records
-    const updatedRecords = await Promise.all(records.map(async record => {
-      if (new Date(record.expectedReturnDate) < new Date() && record.status === 'borrowed') {
+    const updatedRecords = await Promise.all(records.map(async (record, index) => {
+      const expectedDate = new Date(record.expectedReturnDate);
+      const now = new Date();
+      const isOverdue = expectedDate < now && record.status === 'borrowed';
+      
+      console.log(`📅 Record ${index + 1}:`, {
+        id: record._id,
+        expectedDate,
+        now,
+        currentStatus: record.status,
+        isOverdue
+      });
+
+      if (isOverdue) {
         record.status = 'overdue';
         await record.save();
+        console.log(`⚠️ Updated record ${record._id} to overdue`);
       }
       return record;
     }));
 
-    res.json({ success: true, records: updatedRecords });
+    // Prepare the response data
+    const responseData = updatedRecords.map(record => ({
+      _id: record._id,
+      borrowerName: record.borrowerName,
+      book: {
+        _id: record.book?._id,
+        title: record.book?.title || 'Unknown Book',
+        author: record.book?.author
+      },
+      bookCopy: record.bookCopy,
+      borrowDate: record.borrowDate,
+      expectedReturnDate: record.expectedReturnDate,
+      status: record.status,
+      comments: record.comments
+    }));
+
+    console.log('✅ Sending response with records:', responseData.length);
+    console.log('📦 Sample response data:', responseData[0] || 'No records');
+
+    res.json({ 
+      success: true, 
+      records: responseData
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ Error in getActiveBorrows:', error);
+    console.error('❌ Stack trace:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Error fetching active borrows'
+    });
   }
 };
 
 exports.getBorrowerNames = async (req, res) => {
   try {
-    const records = await BorrowRecord.find({ 
-      company: req.user.company 
-    }).distinct('borrowerName');
+    const records = await BorrowRecord.distinct('borrowerName');
+    
+    console.log('Found borrower names:', records);
     
     res.json({ 
       success: true, 
-      borrowerNames: records 
+      borrowerNames: records || [] 
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    console.error('Error in getBorrowerNames:', error);
+    res.json({ 
+      success: true, 
+      borrowerNames: [] 
     });
   }
 }; 
